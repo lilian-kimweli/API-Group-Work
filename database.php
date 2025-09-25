@@ -80,8 +80,22 @@ $conn->exec("CREATE TABLE transactions (
 echo "<p>✓ Transactions table with foreign keys created</p>";
 
     }
+        
+        //  Add sample data
+        $conn->exec("INSERT IGNORE INTO production_lines (id, name, classification) VALUES 
+            (1, 'Wrangler Jeans', 'menswear'),
+            (2, 'Jantzen Swimwear', 'womenswear')");
+
+        $conn->exec("INSERT IGNORE INTO styles (id, name, production_line_id) VALUES 
+            (1, 'Straight-leg', 1),
+            (2, 'Boot-cut', 1)");
+
+        echo "<p>✓ Sample data inserted</p>";
+        echo "<p style='color: green; font-weight: bold;'>Database setup completed successfully!</p>";
+        echo "<p><a href='index.php'>Go to Application</a></p>";
+    }
     
-} catch(PDOException $exception) {
+ catch(PDOException $exception) {
     echo "<p style='color: red;'>Error: " . $exception->getMessage() . "</p>";
 }
 ?>
