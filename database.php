@@ -48,6 +48,31 @@ $conn->exec("CREATE TABLE IF NOT EXISTS customers (
     telephone VARCHAR(20)
 )");
 echo "<p>✓ Customers table created</p>";
+
+// Create products table
+$conn->exec("CREATE TABLE IF NOT EXISTS products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    production_line_id INT,
+    style_id INT,
+    lot_id INT,
+    size_id INT,
+    on_hand_inventory INT DEFAULT 0,
+    outsatanding_orders INT DEFAULT 0
+)");
+echo "<p>✓ Products table created</p>";
+
+// Create transactions table
+$conn->exec("CREATE TABLE IF NOT EXISTS transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT,
+    product_id INT,
+    transaction_date DATE,
+    quantity INT,
+    total_amount DECIMAL(10,2)
+)");
+echo "<p>✓ Transactions table created</p>";
+
     }
     
 } catch(PDOException $exception) {
