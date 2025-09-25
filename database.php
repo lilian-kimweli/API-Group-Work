@@ -48,9 +48,9 @@ $conn->exec("CREATE TABLE IF NOT EXISTS customers (
     telephone VARCHAR(20)
 )");
 echo "<p>✓ Customers table created</p>";
-
-// Create products table
-$conn->exec("CREATE TABLE IF NOT EXISTS products (
+// adding foreign keys 
+$conn->exec("DROP TABLE IF EXISTS products");
+$conn->exec("CREATE TABLE products (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     production_line_id INT,
@@ -58,20 +58,26 @@ $conn->exec("CREATE TABLE IF NOT EXISTS products (
     lot_id INT,
     size_id INT,
     on_hand_inventory INT DEFAULT 0,
-    outsatanding_orders INT DEFAULT 0
+    outstanding_orders INT DEFAULT 0,
+    FOREIGN KEY (production_line_id) REFERENCES production_lines(id),
+    FOREIGN KEY (style_id) REFERENCES styles(id),
+    FOREIGN KEY (lot_id) REFERENCES lots(id),
+    FOREIGN KEY (size_id) REFERENCES sizes(id)
 )");
-echo "<p>✓ Products table created</p>";
+echo "<p>✓ Products table with foreign keys created</p>";
 
-// Create transactions table
-$conn->exec("CREATE TABLE IF NOT EXISTS transactions (
+$conn->exec("DROP TABLE IF EXISTS transactions");
+$conn->exec("CREATE TABLE transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     customer_id INT,
     product_id INT,
     transaction_date DATE,
     quantity INT,
-    total_amount DECIMAL(10,2)
+    total_amount DECIMAL(10,2),
+    FOREIGN KEY (customer_id) REFERENCES customers(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
 )");
-echo "<p>✓ Transactions table created</p>";
+echo "<p>✓ Transactions table with foreign keys created</p>";
 
     }
     
