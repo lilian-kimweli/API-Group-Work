@@ -25,7 +25,29 @@ try {
         )");
         
         echo "<p>✓ Styles table created</p>";
-        
+      
+        // Create lots table
+$conn->exec("CREATE TABLE IF NOT EXISTS lots (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL
+)");
+echo "<p>✓ Lots table created</p>";
+
+// Create sizes table
+$conn->exec("CREATE TABLE IF NOT EXISTS sizes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    description VARCHAR(50)
+)");
+echo "<p>✓ Sizes table created</p>";
+
+// Create customers table
+$conn->exec("CREATE TABLE IF NOT EXISTS customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    address TEXT,
+    telephone VARCHAR(20)
+)");
+echo "<p>✓ Customers table created</p>";
     }
     
 } catch(PDOException $exception) {
