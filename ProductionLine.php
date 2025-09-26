@@ -28,4 +28,15 @@ class ProductionLine {
     }
 }
 
+function read() {
+        $query = "SELECT id, name, classification 
+                  FROM " . $this->table_name . " 
+                  ORDER BY name ASC";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+
+        return $stmt;
+    }
+
 ?>
