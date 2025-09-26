@@ -39,4 +39,27 @@ function read() {
         return $stmt;
     }
 
+    function update() {
+        $query = "UPDATE " . $this->table_name . " 
+                  SET name=:name, classification=:classification 
+                  WHERE id=:id";
+
+        $stmt = $this->conn->prepare($query);
+
+        // Sanitize input
+        $this->name = htmlspecialchars(strip_tags($this->name));
+        $this->classification = htmlspecialchars(strip_tags($this->classification));
+        $this->id = htmlspecialchars(strip_tags($this->id));
+
+        // Bind parameters
+        $stmt->bindParam(":name", $this->name);
+        $stmt->bindParam(":classification", $this->classification);
+        $stmt->bindParam(":id", $this->id);
+
+        if($stmt->execute()) {
+            return true;
+        }
+        return false;
+    }
+
 ?>
