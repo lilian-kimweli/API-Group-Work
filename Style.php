@@ -71,4 +71,20 @@ class Style {
 
         return $stmt->execute();
     }
+    function delete() {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
+        $stmt = $this->conn->prepare($query);
+        $this->id = htmlspecialchars(strip_tags($this->id));
+        $stmt->bindParam(1, $this->id);
+        return $stmt->execute();
+    }
+
+    function getStylesByProductionLine($production_line_id) {
+        $query = "SELECT id, name FROM " . $this->table_name . " 
+                  WHERE production_line_id = ? ORDER BY name ASC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $production_line_id);
+        $stmt->execute();
+        return $stmt;
+    }
 ?>

@@ -48,4 +48,22 @@ class Lot {
         $stmt->bindParam(":id", $this->id);
         return $stmt->execute();
     }
+    function delete() {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = ?";
+        $stmt = $this->conn->prepare($query);
+        $this->id = htmlspecialchars(strip_tags($this->id));
+        $stmt->bindParam(1, $this->id);
+        return $stmt->execute();
+    }
+
+    function search($keywords) {
+        $query = "SELECT id, name FROM " . $this->table_name . " 
+                  WHERE name LIKE ? ORDER BY name ASC";
+        $stmt = $this->conn->prepare($query);
+        $keywords = htmlspecialchars(strip_tags($keywords));
+        $keywords = "%{$keywords}%";
+        $stmt->bindParam(1, $keywords);
+        $stmt->execute();
+        return $stmt;
+    }
 ?>
