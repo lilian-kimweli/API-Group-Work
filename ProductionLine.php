@@ -75,4 +75,22 @@ function read() {
         return false;
     }
 
+    function search($keywords) {
+        $query = "SELECT id, name, classification 
+                  FROM " . $this->table_name . " 
+                  WHERE name LIKE ? OR classification LIKE ? 
+                  ORDER BY name ASC";
+
+        $stmt = $this->conn->prepare($query);
+
+        $keywords = htmlspecialchars(strip_tags($keywords));
+        $keywords = "%{$keywords}%";
+
+        $stmt->bindParam(1, $keywords);
+        $stmt->bindParam(2, $keywords);
+
+        $stmt->execute();
+        return $stmt;
+    }
+
 ?>
