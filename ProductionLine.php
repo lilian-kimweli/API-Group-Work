@@ -39,6 +39,26 @@ function read() {
         return $stmt;
     }
 
+     function readOne() {
+        $query = "SELECT id, name, classification 
+                  FROM " . $this->table_name . " 
+                  WHERE id = ? 
+                  LIMIT 0,1";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $this->id);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if($row) {
+            $this->name = $row['name'];
+            $this->classification = $row['classification'];
+            return true;
+        }
+        return false;
+    }
+
     function update() {
         $query = "UPDATE " . $this->table_name . " 
                   SET name=:name, classification=:classification 
