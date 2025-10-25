@@ -42,6 +42,7 @@ class ProductManager {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    
     // Get products by production line
     public function getProductsByProductionLine($production_line_id) {
         $query = "SELECT p.*, pl.name as production_line, s.name as style, l.name as lot, sz.description as size 
