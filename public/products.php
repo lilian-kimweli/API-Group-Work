@@ -9,6 +9,7 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit;
 }
 
+
 $productManager = new ProductManager();
 $products = $productManager->getAllProducts();
 
