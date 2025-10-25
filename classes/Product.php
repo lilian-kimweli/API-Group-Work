@@ -11,6 +11,7 @@ class Product {
     private $on_hand_quantity;
     private $description;
 
+    
     // Constructor
     public function __construct($name = '', $production_line_id = null, $style_id = null, $lot_id = null, $size_id = null, $unit_cost = 0, $unit_price = 0, $on_hand_quantity = 0, $description = '') {
         $this->name = $name;
