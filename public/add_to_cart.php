@@ -26,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cart = new Cart();
     if ($cart->addItem($product_id, $product_name, $price, $quantity)) {
         $_SESSION['cart_message'] = "'$product_name' added to cart successfully!";
+        
     } else {
         $_SESSION['cart_error'] = "Failed to add product to cart!";
     }
