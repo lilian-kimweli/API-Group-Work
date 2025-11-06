@@ -6,7 +6,8 @@ define('CONSUMER_KEY', 'GmcimGFcOMZ1cmGaru6N7RsVFZDM4gQCn3qfrVwzAQs3kzt3');
 define('CONSUMER_SECRET', 'FrexIZAdN61m7uaQjEqVMVa9WKkAwOwwnXdajgSBwW19L7AIBgEhDiVViakV6AwH'); // Your consumer secret  
 define('SHORTCODE', '174379'); // Sandbox shortcode
 define('PASSKEY', 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919');
-define('CALLBACK_URL', 'https://localhost/bluebell/mpesa/callback.php'); 
+define('CALLBACK_URL', 'https://epixylous-hurtable-rosalee.ngrok.io/callback.php');
+
 
 /**
  * Get Access Token from M-Pesa API

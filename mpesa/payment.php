@@ -62,15 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['phone'])) {
             <label>Amount (KES):</label>
             <input type="number" name="amount" value="1" min="1" required>
         </div>
+
         
-        <div class="form-group">
-            <label>Account Reference:</label>
-            <input type="text" name="account_ref" value="Test Payment">
-        </div>
         
         <button type="submit">Pay with M-Pesa</button>
     </form>
     
-    <p><small>💡 Test with phone: 254708374149 and PIN: 1234</small></p>
-</body>
+    
 </html>
