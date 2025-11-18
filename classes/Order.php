@@ -35,6 +35,7 @@ class Order {
     // Convert to array for database operations
     public function toArray() {
         return [
+            
             'customer_id' => $this->customer_id,
             'order_date' => $this->order_date,
             'total_amount' => $this->total_amount,

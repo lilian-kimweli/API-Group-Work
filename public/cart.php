@@ -282,6 +282,7 @@ if (isset($_SESSION['cart_error'])) {
                         <button type="submit" name="update_quantity" value="1" class="btn-update">Update Quantities</button>
                         <button type="submit" name="clear_cart" value="1" class="btn-clear" 
                                 onclick="return confirm('Are you sure you want to clear your entire cart?')">
+                            
                             Clear Entire Cart
                         </button>
                     </div>

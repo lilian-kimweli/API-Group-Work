@@ -31,11 +31,17 @@ if (!empty($_GET['category'])) {
     $params[] = $_GET['category'];
 }
 
+<<<<<<< HEAD
 // Brand filter
 if (!empty($_GET['brand'])) {
     $sql .= " AND p.brand_id = ?";
     $params[] = $_GET['brand'];
 }
+=======
+
+$productManager = new ProductManager();
+$products = $productManager->getAllProducts();
+>>>>>>> a8d3cad25a695025eeea249ef2e6fdaedc265aea
 
 $sql .= " ORDER BY p.id DESC";
 

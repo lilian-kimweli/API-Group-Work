@@ -111,6 +111,7 @@ if (isset($_SESSION['cart_message'])) {
             margin-bottom: 20px;
             border-left: 4px solid #28a745;
         }
+        
     </style>
 </head>
 <body>

@@ -1,6 +1,7 @@
 <?php
 require_once 'Database.php';
 
+
 class UserManager {
     private $db;
 

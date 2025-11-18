@@ -102,6 +102,7 @@ class Cart {
     public function clear() {
         $this->items = [];
         $this->saveCart();
+        
     }
 
     // Check if cart is empty

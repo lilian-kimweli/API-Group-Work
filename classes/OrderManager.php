@@ -94,6 +94,7 @@ class OrderManager {
         $items_stmt = $this->db->prepare($items_query);
         $items_stmt->bindParam(':order_id', $order_id);
         $items_stmt->execute();
+        
         $order['items'] = $items_stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return $order;
