@@ -2,151 +2,146 @@
 session_start();
 require_once '../config/database.php';
 require_once '../classes/Database.php';
+require_once '../classes/Auth.php';
 
-// Check if user is logged in
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-    header('Location: login.php');
-    exit;
+// FIX: Reset cart if it's corrupted
+if (isset($_SESSION['cart']) && !is_array($_SESSION['cart'])) {
+    $_SESSION['cart'] = [];
 }
+
+// Check if user is logged in using our new Auth class
+Auth::requireAuth();
 
 // Get user info
 $username = $_SESSION['username'];
 $role = $_SESSION['role'];
+
+// Safe cart count
+$item_count = 0;
+if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
+    foreach ($_SESSION['cart'] as $item) {
+        if (is_array($item) && isset($item['quantity'])) {
+            $item_count += $item['quantity'];
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - BlubellSeek</title>
+    <title>Dashboard - Bluebell Inventory</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .dashboard-header {
-            background: #34495e;
-            color: white;
-            padding: 1rem 0;
-            margin-bottom: 2rem;
-        }
-        .welcome-message {
-            background: #27ae60;
-            color: white;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .dashboard-menu {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-        .menu-card {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
-            border-left: 4px solid #3498db;
-        }
-        .menu-card h3 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-        }
-        .menu-card p {
-            color: #7f8c8d;
-            margin-bottom: 20px;
-        }
-        .menu-btn {
-            background: #3498db;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            display: inline-block;
-        }
-        .menu-btn:hover {
-            background: #2980b9;
-        }
-        .logout-btn {
-            background: #e74c3c;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            display: inline-block;
-            margin-top: 20px;
-        }
-        .logout-btn:hover {
-            background: #c0392b;
-        }
-    </style>
+
 </head>
 <body>
     <div class="header">
         <div class="container">
-            <h1>BlubellSeek Inventory System</h1>
+            <h1>Bluebell Inventory System</h1>
         </div>
     </div>
+    
     <div class="nav-links">
-    <span style="color: white;">Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?></span>
-    <a href="dashboard.php" class="nav-btn">Dashboard</a>
-    <a href="products.php" class="nav-btn">Products</a>
-    <a href="cart.php" class="nav-btn">Cart (
-        <?php 
-        if (isset($_SESSION['cart'])) {
-            $item_count = 0;
-            foreach ($_SESSION['cart'] as $item) {
-                $item_count += $item['quantity'];
-            }
-            echo $item_count;
-        } else {
-            echo '0';
-        }
-        ?>
-    )</a>
-    <a href="logout.php" class="nav-btn">Logout</a>
-</div>
+        <span style="color: white;">Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?></span>
+        <a href="dashboard.php" class="nav-btn">Dashboard</a>
+        <a href="products.php" class="nav-btn">Products</a>
+        <a href="cart.php" class="nav-btn">Cart (<?php echo $item_count; ?>)</a>
+        <a href="logout.php" class="nav-btn">Logout</a>
+    </div>
 
     <div class="container">
         <div class="welcome-message">
-            <h2>Welcome, <?php echo htmlspecialchars($username); ?>!</h2>
-            <p>Role: <?php echo htmlspecialchars(ucfirst($role)); ?></p>
+            <h2>Welcome, <?php echo htmlspecialchars($username); ?>! 
+                <span class="role-badge"><?php echo htmlspecialchars(ucfirst($role)); ?></span>
+            </h2>
+            <p>You have successfully logged into Bluebell Clothing Inventory System</p>
         </div>
 
-        <div class="dashboard-menu">
-            <div class="menu-card">
-                <h3> Product Catalog</h3>
-                <p>Browse and manage all products</p>
-                <a href="products.php" class="menu-btn">View Products</a>
-            </div>
+        <!-- Common Features for All Roles -->
+        <div class="role-section">
+            <h3>🛍️ Shopping Features</h3>
+            <div class="dashboard-menu">
+                <div class="menu-card customer-card">
+                    <h3>📦 Product Catalog</h3>
+                    <p>Browse our clothing collection</p>
+                    <a href="products.php" class="menu-btn">View Products</a>
+                </div>
 
-            <div class="menu-card">
-                <h3> Customer Information</h3>
-                <p>Manage customer data and relationships</p>
-                <a href="customers.php" class="menu-btn">View Customers</a>
-            </div>
+                <div class="menu-card customer-card">
+                    <h3>🛒 Shopping Cart</h3>
+                    <p>View your selected items</p>
+                    <a href="cart.php" class="menu-btn">View Cart</a>
+                </div>
 
-            <div class="menu-card">
-                <h3> Inventory</h3>
-                <p>Check current inventory levels</p>
-                <a href="inventory.php" class="menu-btn">View Inventory</a>
+                <div class="menu-card customer-card">
+                    <h3>📋 My Orders</h3>
+                    <p>View your order history</p>
+                    <a href="orders.php" class="menu-btn">View Orders</a>
+                </div>
             </div>
-            <div class="menu-card">
-                <h3>My Orders</h3>
-                <p>View your order history and track shipments</p>
-                <a href="orders.php" class="menu-btn">View Orders</a>
-            </div>
-
-            <?php if ($role === 'admin' || $role === 'manager'): ?>
-            <div class="menu-card">
-                <h3> Admin Panel</h3>
-                <p>Administrative functions</p>
-                <a href="admin.php" class="menu-btn">Admin Access</a>
-            </div>
-            <?php endif; ?>
         </div>
+
+        <!-- Manager & Admin Features -->
+        <?php if (Auth::hasAnyRole(['manager', 'admin'])): ?>
+        <div class="role-section">
+            <h3>👔 Management Tools</h3>
+            <div class="dashboard-menu">
+                <div class="menu-card manager-card">
+                    <h3>📊 Inventory Management</h3>
+                    <p>Manage clothing stock and levels</p>
+                    <a href="inventory.php" class="menu-btn manager-btn">Manage Inventory</a>
+                </div>
+
+                <div class="menu-card manager-card">
+                    <h3>📦 Manage Orders</h3>
+                    <p>View and manage all customer orders</p>
+                    <a href="admin_orders.php" class="menu-btn manager-btn">Manage Orders</a>
+                </div>
+
+                <div class="menu-card manager-card">
+                    <h3>👥 Customer Management</h3>
+                    <p>View and manage customer data</p>
+                    <a href="customers.php" class="menu-btn manager-btn">View Customers</a>
+                </div>
+
+                <div class="menu-card manager-card">
+                    <h3>📈 Reports</h3>
+                    <p>View sales and inventory reports</p>
+                    <a href="reports.php" class="menu-btn manager-btn">View Reports</a>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Admin Only Features -->
+        <?php if (Auth::hasRole('admin')): ?>
+        <div class="role-section">
+            <h3>⚙️ Administrator Tools</h3>
+            <div class="dashboard-menu">
+                <div class="menu-card admin-card">
+                    <h3>👤 User Management</h3>
+                    <p>Manage all system users</p>
+                    <a href="user_management.php" class="menu-btn admin-btn">Manage Users</a>
+                </div>
+
+                <div class="menu-card admin-card">
+                    <h3>🏷️ Category Management</h3>
+                    <p>Manage clothing categories</p>
+                    <a href="categories.php" class="menu-btn admin-btn">Manage Categories</a>
+                </div>
+
+                <div class="menu-card admin-card">
+                    <h3>⚙️ System Settings</h3>
+                    <p>Configure system preferences</p>
+                    <a href="admin_settings.php" class="menu-btn admin-btn">System Settings</a>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <div style="text-align: center; margin-top: 30px;">
+            <a href="setup_2fa.php" class="menu-btn" style="background: #9b59b6;">🔒 Setup 2FA</a>
             <a href="logout.php" class="logout-btn">Logout</a>
         </div>
     </div>

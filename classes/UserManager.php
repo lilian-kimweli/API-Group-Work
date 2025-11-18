@@ -9,13 +9,16 @@ class UserManager {
         $this->db = $database->getConnection();
     }
 
-    // Create new user
+    // Create new user - SIMPLIFIED (without two_factor_enabled)
     public function createUser(User $user) {
-        $query = "INSERT INTO users (username, email, password_hash, role, two_factor_secret) 
-                  VALUES (:username, :email, :password_hash, :role, :two_factor_secret)";
+        $query = "INSERT INTO users (username, email, password_hash, role) 
+                  VALUES (:username, :email, :password_hash, :role)";
         
         $stmt = $this->db->prepare($query);
+        
+        // Get user data and remove two_factor_enabled
         $userData = $user->toArray();
+        unset($userData['two_factor_enabled']);
         
         return $stmt->execute($userData);
     }
@@ -59,6 +62,17 @@ class UserManager {
         }
         
         return false;
+    }
+
+    // Update 2FA status separately
+    public function update2FAStatus($user_id, $enabled) {
+        $query = "UPDATE users SET two_factor_enabled = :enabled WHERE id = :user_id";
+        $stmt = $this->db->prepare($query);
+        $enabled_int = $enabled ? 1 : 0;
+        $stmt->bindParam(':enabled', $enabled_int, PDO::PARAM_INT);
+        $stmt->bindParam(':user_id', $user_id);
+        
+        return $stmt->execute();
     }
 }
 ?>

@@ -177,6 +177,27 @@ if (isset($_SESSION['cart_message'])) {
                         <span class="info-label">Style:</span>
                         <span><?php echo htmlspecialchars($product['style']); ?></span>
                     </div>
+                    <!-- Add this where you want the main product image to appear -->
+<div style="text-align: center; margin: 20px 0;">
+    <?php 
+    $image_url = $product['image_url'] ?? '';
+    $has_image = !empty($image_url);
+    ?>
+    
+    <?php if ($has_image): ?>
+        <img src="<?php echo htmlspecialchars($image_url); ?>" 
+             alt="<?php echo htmlspecialchars($product['name']); ?>"
+             class="product-detail-image"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="image-fallback" style="display: none; width: 200px; height: 200px; margin: 0 auto;">
+            Product Image<br>Not Available
+        </div>
+    <?php else: ?>
+        <div class="image-fallback" style="width: 200px; height: 200px; margin: 0 auto;">
+            No Product Image
+        </div>
+    <?php endif; ?>
+</div>
                 </div>
 
                 <div class="info-section">

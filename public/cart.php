@@ -10,16 +10,24 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
 }
 
 $cart = new Cart();
+
+// FIX: Ensure cart items is always an array
 $cart_items = $cart->getItems();
+if (!is_array($cart_items)) {
+    $cart_items = [];
+}
+
 $cart_total = $cart->getTotal();
 $item_count = $cart->getItemCount();
 
 // Handle cart actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['update_quantity']) && isset($_POST['quantities'])) {
-        // Update quantities
+        // Update quantities - with validation
         foreach ($_POST['quantities'] as $product_id => $quantity) {
-            $cart->updateQuantity($product_id, intval($quantity));
+            if (is_numeric($quantity) && $quantity >= 0) {
+                $cart->updateQuantity($product_id, intval($quantity));
+            }
         }
         $_SESSION['cart_message'] = "Cart updated successfully!";
     } elseif (isset($_POST['remove_item']) && isset($_POST['product_id'])) {
@@ -238,9 +246,16 @@ if (isset($_SESSION['cart_error'])) {
                         </thead>
                         <tbody>
                             <?php foreach ($cart_items as $product_id => $item): ?>
+                                <?php 
+                                // FIX: Validate each item before displaying
+                                if (!is_array($item) || !isset($item['name']) || !isset($item['price']) || !isset($item['quantity'])) {
+                                    // Skip invalid items
+                                    continue;
+                                }
+                                ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($item['name']); ?></td>
-                                <td>$<?php echo number_format($item['price'], 2); ?></td>
+                                <td>KSh <?php echo number_format($item['price'], 2); ?></td>
                                 <td>
                                     <input type="number" 
                                            name="quantities[<?php echo $product_id; ?>]" 
@@ -249,7 +264,7 @@ if (isset($_SESSION['cart_error'])) {
                                            max="99" 
                                            class="quantity-input">
                                 </td>
-                                <td>$<?php echo number_format($item['price'] * $item['quantity'], 2); ?></td>
+                                <td>KSh <?php echo number_format($item['price'] * $item['quantity'], 2); ?></td>
                                 <td>
                                     <button type="submit" name="remove_item" value="1" class="btn-remove"
                                             onclick="document.getElementById('remove_product_id').value='<?php echo $product_id; ?>'">
@@ -280,7 +295,7 @@ if (isset($_SESSION['cart_error'])) {
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-top: 10px; padding: 15px 0; border-top: 1px solid #ddd;">
                         <strong>Total Amount:</strong>
-                        <span class="total-amount">$<?php echo number_format($cart_total, 2); ?></span>
+                        <span class="total-amount">KSh <?php echo number_format($cart_total, 2); ?></span>
                     </div>
                     
                     <div style="margin-top: 25px; text-align: center;">

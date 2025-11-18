@@ -8,8 +8,8 @@ class Cart {
             session_start();
         }
         
-        // Initialize cart in session if not exists
-        if (!isset($_SESSION['cart'])) {
+        // FIX: Always ensure cart is a valid array
+        if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) {
             $_SESSION['cart'] = [];
         }
         
@@ -18,6 +18,11 @@ class Cart {
 
     // Add item to cart
     public function addItem($product_id, $product_name, $price, $quantity = 1) {
+        // Ensure items is an array
+        if (!is_array($this->items)) {
+            $this->items = [];
+        }
+        
         if (isset($this->items[$product_id])) {
             // Update quantity if item already exists
             $this->items[$product_id]['quantity'] += $quantity;
@@ -61,23 +66,34 @@ class Cart {
 
     // Get all cart items
     public function getItems() {
-        return $this->items;
+        // Always return an array
+        return is_array($this->items) ? $this->items : [];
     }
 
-    // Get cart total
+    // Get cart total - FIXED with proper validation
     public function getTotal() {
         $total = 0;
-        foreach ($this->items as $item) {
-            $total += $item['price'] * $item['quantity'];
+        if (is_array($this->items)) {
+            foreach ($this->items as $item) {
+                // Check if item is a valid array with required keys
+                if (is_array($item) && isset($item['price']) && isset($item['quantity'])) {
+                    $total += $item['price'] * $item['quantity'];
+                }
+            }
         }
         return $total;
     }
 
-    // Get item count
+    // Get item count - FIXED with proper validation
     public function getItemCount() {
         $count = 0;
-        foreach ($this->items as $item) {
-            $count += $item['quantity'];
+        if (is_array($this->items)) {
+            foreach ($this->items as $item) {
+                // Check if item is a valid array with quantity
+                if (is_array($item) && isset($item['quantity'])) {
+                    $count += $item['quantity'];
+                }
+            }
         }
         return $count;
     }
@@ -90,12 +106,22 @@ class Cart {
 
     // Check if cart is empty
     public function isEmpty() {
-        return empty($this->items);
+        return empty($this->items) || !is_array($this->items);
     }
 
     // Save cart to session
     private function saveCart() {
         $_SESSION['cart'] = $this->items;
+    }
+
+    // Debug method to check cart structure
+    public function debugCart() {
+        echo "<pre>Cart Items: ";
+        print_r($this->items);
+        echo "</pre>";
+        echo "<pre>Session Cart: ";
+        print_r($_SESSION['cart']);
+        echo "</pre>";
     }
 }
 ?>

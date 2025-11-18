@@ -1,6 +1,11 @@
 <?php
 // callback.php - Handle M-Pesa callbacks
 require_once 'functions.php';
+require_once '../config/database.php';
+require_once '../classes/Database.php';
+
+$db = new Database();
+$conn = $db->getConnection();
 
 // Get the callback data
 $callbackJSON = file_get_contents('php://input');
@@ -18,23 +23,53 @@ if (isset($callbackData['Body']['stkCallback']['ResultCode'])) {
         $merchantRequestID = $callbackData['Body']['stkCallback']['MerchantRequestID'];
         $checkoutRequestID = $callbackData['Body']['stkCallback']['CheckoutRequestID'];
         
-        // You can update your database here
-        logTransaction("PAYMENT SUCCESS: MerchantID: $merchantRequestID, CheckoutID: $checkoutRequestID", 'successful_payments.log');
+        // Extract order ID from callback metadata
+        $order_id = extractOrderIdFromCallback($callbackData);
+        
+        if ($order_id) {
+            // Update order status to paid
+            updateOrderPaymentStatus($order_id, 'paid', $callbackData);
+            
+            logTransaction("PAYMENT SUCCESS: Order #$order_id - MerchantID: $merchantRequestID", 'successful_payments.log');
+        }
         
         http_response_code(200);
         echo json_encode(array("ResultCode" => 0, "ResultDesc" => "Success"));
     } else {
         // Payment failed
         $errorMessage = $callbackData['Body']['stkCallback']['ResultDesc'];
-        logTransaction("PAYMENT FAILED: $errorMessage", 'failed_payments.log');
+        
+        // Extract order ID and update status
+        $order_id = extractOrderIdFromCallback($callbackData);
+        if ($order_id) {
+            updateOrderPaymentStatus($order_id, 'failed', $callbackData);
+        }
+        
+        logTransaction("PAYMENT FAILED: Order #$order_id - $errorMessage", 'failed_payments.log');
         
         http_response_code(200);
-        echo json_encode(array("ResultCode" => 0, "ResultDesc" => "Success")); // Always return success to M-Pesa
+        echo json_encode(array("ResultCode" => 0, "ResultDesc" => "Success"));
     }
 } else {
     // Invalid callback
     logTransaction("INVALID CALLBACK: " . $callbackJSON, 'invalid_callbacks.log');
     http_response_code(200);
     echo json_encode(array("ResultCode" => 0, "ResultDesc" => "Success"));
+}
+
+function extractOrderIdFromCallback($callbackData) {
+    if (isset($callbackData['Body']['stkCallback']['CallbackMetadata']['Item'])) {
+        foreach ($callbackData['Body']['stkCallback']['CallbackMetadata']['Item'] as $item) {
+            if ($item['Name'] == 'AccountReference') {
+                $ref = $item['Value'];
+                // Extract order ID from "Order #123"
+                if (preg_match('/Order #(\d+)/', $ref, $matches)) {
+                    return $matches[1];
+                }
+                return $ref;
+            }
+        }
+    }
+    return null;
 }
 ?>

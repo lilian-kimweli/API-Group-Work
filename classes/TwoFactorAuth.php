@@ -7,121 +7,267 @@ class TwoFactorAuth {
     public function __construct() {
         $database = new Database();
         $this->db = $database->getConnection();
+        $this->ensureTablesExist();
     }
 
-    // Generate a random secret for 2FA
-    public function generateSecret() {
-        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; // Base32 characters
-        $secret = '';
-        for ($i = 0; $i < 16; $i++) {
-            $secret .= $chars[rand(0, strlen($chars) - 1)];
+    // Ensure required tables exist
+    private function ensureTablesExist() {
+        try {
+            // Check if two_factor_codes table exists
+            $stmt = $this->db->query("SHOW TABLES LIKE 'two_factor_codes'");
+            if ($stmt->rowCount() == 0) {
+                // Create the table if it doesn't exist
+                $query = "CREATE TABLE two_factor_codes (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    code VARCHAR(6) NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )";
+                $this->db->exec($query);
+                error_log("✅ Created two_factor_codes table");
+            }
+        } catch (Exception $e) {
+            error_log("Table creation error: " . $e->getMessage());
         }
-        return $secret;
     }
 
-    // Enable 2FA for a user
-    public function enable2FA($user_id, $secret) {
-        $query = "UPDATE users SET two_factor_enabled = TRUE, two_factor_secret = :secret WHERE id = :user_id";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':secret', $secret);
-        $stmt->bindParam(':user_id', $user_id);
-        
-        return $stmt->execute();
+    // Generate a random 6-digit code
+    public function generateCode() {
+        return sprintf("%06d", mt_rand(1, 999999));
     }
 
-    // Disable 2FA for a user
-    public function disable2FA($user_id) {
-        $query = "UPDATE users SET two_factor_enabled = FALSE, two_factor_secret = NULL WHERE id = :user_id";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':user_id', $user_id);
-        
-        return $stmt->execute();
+    // Store 2FA code in database with expiration
+    public function store2FACode($user_id, $code) {
+        try {
+            // First, clear any existing codes for this user
+            $this->clearExpiredCodes();
+            
+            // Store new code with 10-minute expiration
+            $expires_at = date('Y-m-d H:i:s', time() + 600); // 10 minutes
+            
+            $query = "INSERT INTO two_factor_codes (user_id, code, expires_at) 
+                      VALUES (:user_id, :code, :expires_at)";
+            $stmt = $this->db->prepare($query);
+            
+            $result = $stmt->execute([
+                'user_id' => $user_id,
+                'code' => $code,
+                'expires_at' => $expires_at
+            ]);
+            
+            if ($result) {
+                error_log("✅ 2FA code stored for user $user_id: $code");
+                error_log("✅ Code expires at: $expires_at");
+            }
+            
+            return $result;
+        } catch (Exception $e) {
+            error_log("❌ Store 2FA code error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Clear expired codes
+    private function clearExpiredCodes() {
+        try {
+            $current_time = date('Y-m-d H:i:s');
+            $query = "DELETE FROM two_factor_codes WHERE expires_at < :current_time";
+            $stmt = $this->db->prepare($query);
+            return $stmt->execute(['current_time' => $current_time]);
+        } catch (Exception $e) {
+            error_log("Clear expired codes error: " . $e->getMessage());
+            return false;
+        }
     }
 
     // Verify 2FA code
-    public function verifyCode($secret, $code) {
-        // For simplicity, we'll use a time-based code verification
-        // In a real application, you'd use a library like RobThree/TwoFactorAuth
-        return $this->verifyTOTP($secret, $code);
-    }
-
-    // Simple TOTP verification (for demonstration)
-    private function verifyTOTP($secret, $code) {
-        // This is a simplified version - in production use a proper library
-        $timeSlice = floor(time() / 30);
-        $validCodes = [];
-        
-        // Check current time and previous/next 30-second window
-        for ($i = -1; $i <= 1; $i++) {
-            $validCodes[] = $this->getTOTPCode($secret, $timeSlice + $i);
-        }
-        
-        return in_array($code, $validCodes);
-    }
-
-    private function getTOTPCode($secret, $timeSlice) {
-        // Simplified TOTP calculation
-        $secretKey = $this->base32Decode($secret);
-        $time = pack('N*', 0) . pack('N*', $timeSlice);
-        $hm = hash_hmac('sha1', $time, $secretKey, true);
-        $offset = ord(substr($hm, -1)) & 0x0F;
-        $hashpart = substr($hm, $offset, 4);
-        $value = unpack('N', $hashpart);
-        $value = $value[1];
-        $value = $value & 0x7FFFFFFF;
-        $modulo = pow(10, 6);
-        return str_pad($value % $modulo, 6, '0', STR_PAD_LEFT);
-    }
-
-    private function base32Decode($secret) {
-        // Simple base32 decoding
-        $base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        $buffer = 0;
-        $bufferSize = 0;
-        $result = '';
-        
-        for ($i = 0; $i < strlen($secret); $i++) {
-            $char = $secret[$i];
-            $buffer = ($buffer << 5) | strpos($base32Chars, $char);
-            $bufferSize += 5;
+    public function verifyCode($user_id, $entered_code) {
+        try {
+            $this->clearExpiredCodes();
             
-            if ($bufferSize >= 8) {
-                $bufferSize -= 8;
-                $result .= chr(($buffer >> $bufferSize) & 0xFF);
+            // Use the same timezone as PHP
+            $current_time = date('Y-m-d H:i:s');
+            
+            $query = "SELECT * FROM two_factor_codes 
+                      WHERE user_id = :user_id AND code = :code AND expires_at > :current_time 
+                      LIMIT 1";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([
+                'user_id' => $user_id,
+                'code' => $entered_code,
+                'current_time' => $current_time
+            ]);
+            
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result) {
+                // Code is valid - delete it
+                $delete_query = "DELETE FROM two_factor_codes WHERE id = :id";
+                $delete_stmt = $this->db->prepare($delete_query);
+                $delete_stmt->execute(['id' => $result['id']]);
+                error_log("✅ 2FA code verified for user $user_id");
+                return true;
             }
+            
+            error_log("❌ Invalid 2FA code for user $user_id: $entered_code");
+            error_log("❌ Current time: $current_time");
+            return false;
+        } catch (Exception $e) {
+            error_log("Verify code error: " . $e->getMessage());
+            return false;
         }
-        
-        return $result;
     }
 
-    // Generate backup codes
-    public function generateBackupCodes() {
-        $codes = [];
-        for ($i = 0; $i < 10; $i++) {
-            $codes[] = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+    // Send 2FA code via email
+    public function send2FACode($user_id, $email, $username, $code) {
+        return $this->sendRealEmail($email, $username, $code);
+    }
+
+    // Send actual email using PHPMailer
+    private function sendRealEmail($to, $username, $code) {
+        try {
+            // Load PHPMailer with correct path
+            $vendorPath = __DIR__ . '/../vendor/autoload.php';
+            if (!file_exists($vendorPath)) {
+                error_log("❌ Vendor path not found: $vendorPath");
+                // Fallback to development mode
+                return $this->fallbackToDevMode($to, $username, $code);
+            }
+            require_once $vendorPath;
+            
+            // Load email configuration
+            $configPath = __DIR__ . '/../config/email_config.php';
+            if (file_exists($configPath)) {
+                require_once $configPath;
+            } else {
+                error_log("❌ Email config file not found: $configPath");
+                return $this->fallbackToDevMode($to, $username, $code);
+            }
+            
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            
+            // Server settings for Gmail
+            $mail->isSMTP();
+            $mail->Host = SMTP_HOST;
+            $mail->SMTPAuth = true;
+            $mail->Username = SMTP_USERNAME;
+            $mail->Password = SMTP_PASSWORD;
+            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = SMTP_PORT;
+            
+            // Recipients
+            $mail->setFrom(MAIL_FROM, MAIL_FROM_NAME);
+            $mail->addAddress($to, $username);
+            
+            // Content
+            $mail->isHTML(true);
+            $mail->Subject = 'Your Blubell Inventory Verification Code';
+            $mail->Body = "
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+                        .container { background: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; }
+                        .code { font-size: 32px; font-weight: bold; color: #3498db; text-align: center; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 5px; letter-spacing: 5px; }
+                        .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class='container'>
+                        <h2>Hello $username!</h2>
+                        <p>Your verification code for Blubell Inventory is:</p>
+                        <div class='code'>$code</div>
+                        <p><strong>This code will expire in 10 minutes.</strong></p>
+                        <p>Enter this code on the verification page to complete your login.</p>
+                        
+                        <div class='footer'>
+                            <p>If you didn't request this code, please ignore this email.</p>
+                            <p>Blubell Inventory System</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            ";
+            
+            $mail->AltBody = "Hello $username! Your verification code is: $code. This code will expire in 10 minutes.";
+            
+            $mail->send();
+            error_log("✅ 2FA email sent to $username ($to) with code: $code");
+            return true;
+            
+        } catch (Exception $e) {
+            error_log("❌ Email sending failed for $to: " . $e->getMessage());
+            return $this->fallbackToDevMode($to, $username, $code);
         }
-        return $codes;
     }
 
-    // Save backup codes
-    public function saveBackupCodes($user_id, $codes) {
-        $query = "UPDATE users SET two_factor_backup_codes = :codes WHERE id = :user_id";
-        $stmt = $this->db->prepare($query);
-        $codesJson = json_encode($codes);
-        $stmt->bindParam(':codes', $codesJson);
-        $stmt->bindParam(':user_id', $user_id);
-        
-        return $stmt->execute();
+    // Fallback to development mode if email fails
+    private function fallbackToDevMode($to, $username, $code) {
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['dev_2fa_code'] = $code;
+        $_SESSION['dev_2fa_time'] = date('Y-m-d H:i:s');
+        $_SESSION['dev_2fa_email'] = $to;
+        error_log("📧 DEVELOPMENT MODE - Code for $username ($to): $code");
+        return true;
     }
 
-    // Get user's 2FA status
+    // Enable 2FA for user
+    public function enable2FA($user_id) {
+        try {
+            $query = "UPDATE users SET two_factor_enabled = TRUE WHERE id = :user_id";
+            $stmt = $this->db->prepare($query);
+            $result = $stmt->execute(['user_id' => $user_id]);
+            
+            if ($result) {
+                error_log("✅ 2FA enabled for user $user_id");
+            }
+            
+            return $result;
+        } catch (Exception $e) {
+            error_log("❌ Enable 2FA error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Disable 2FA for user
+    public function disable2FA($user_id) {
+        try {
+            $query = "UPDATE users SET two_factor_enabled = FALSE WHERE id = :user_id";
+            $stmt = $this->db->prepare($query);
+            $result = $stmt->execute(['user_id' => $user_id]);
+            
+            if ($result) {
+                error_log("✅ 2FA disabled for user $user_id");
+            }
+            
+            return $result;
+        } catch (Exception $e) {
+            error_log("❌ Disable 2FA error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Get 2FA status
     public function get2FAStatus($user_id) {
-        $query = "SELECT two_factor_enabled, two_factor_secret FROM users WHERE id = :user_id";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':user_id', $user_id);
-        $stmt->execute();
-        
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $query = "SELECT two_factor_enabled, email FROM users WHERE id = :user_id";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute(['user_id' => $user_id]);
+            
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$result) {
+                return ['two_factor_enabled' => false, 'email' => ''];
+            }
+            
+            return $result;
+        } catch (Exception $e) {
+            error_log("Get 2FA status error: " . $e->getMessage());
+            return ['two_factor_enabled' => false, 'email' => ''];
+        }
     }
 }
 ?>
